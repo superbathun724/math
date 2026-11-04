@@ -18,6 +18,8 @@ button{font:inherit;font-size:1.05rem;border:0;border-radius:16px;padding:11px 1
 button.s{background:#fff1a8;color:#8a5a00;box-shadow:0 4px 0 #e0bd4a}
 #tS{background:#c8f3d2;color:#0f6b2f;box-shadow:0 4px 0 #7fd397}#tS.on{background:#2fb457;color:#fff;box-shadow:0 4px 0 #1b7f3b}
 #tT{background:#ffdcc2;color:#a8470a;box-shadow:0 4px 0 #f2a874}#tT.on{background:#ff8a3d;color:#fff;box-shadow:0 4px 0 #c75d14}
+#tG{background:#e4d9ff;color:#5b3fb3;box-shadow:0 4px 0 #b9a6f0}#tG.on{background:#8b5cf6;color:#fff;box-shadow:0 4px 0 #6a3fd1}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.gal .card{margin:0;padding:10px;text-align:center}.gal canvas{touch-action:auto;margin:4px auto;border-width:3px;box-shadow:none}.gal b{display:block;font-size:.95rem}
 body.teacher{background:radial-gradient(circle at 14px 14px,#ffffffaa 3px,transparent 4px) 0 0/44px 44px,linear-gradient(180deg,#ffd9b8,#fff0e0 55%,#fff7cc);background-attachment:fixed}
 body.teacher .card{border-color:#ffb07a;box-shadow:0 6px 0 #ffb07a55}body.teacher h2{color:#e8731a}button:disabled{opacity:.4;cursor:default}
 input{font:inherit;padding:10px;border:3px solid #b9d4f5;border-radius:14px;background:#fff;color:var(--tx);width:45%;margin-bottom:8px}
@@ -27,7 +29,7 @@ table{width:100%;border-collapse:collapse;font-size:.9rem}.card{overflow-x:auto}
 .ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}
 </style></head><body><main>
 <h1>🦒 선대칭 도형 제비뽑기 ✨</h1>
-<div class="tabs"><button id="tS" class="s">학생</button><button id="tT" class="s">🔑 선생님</button></div>
+<div class="tabs"><button id="tS" class="s">학생</button><button id="tT" class="s">🔑 선생님</button><button id="tG" class="s">🖼️ 공유</button></div>
 <div id="app"></div>
 <p class="mu" id="mode"></p>
 </main>
@@ -82,14 +84,15 @@ async function del(col,id){delete S[col][id];if(db){try{await db.from('symm').de
 let tOK=false,lock=false;try{lock=sessionStorage.getItem('symm-lock')==='1'}catch(e){}
 $('tS').onclick=()=>{tab='S';if(!tOK&&!lock){lock=true;try{sessionStorage.setItem('symm-lock','1')}catch(e){}}render()};
 $('tT').onclick=()=>{tab='T';render()};
+$('tG').onclick=()=>{tab='G';render()};
 const cv=document.createElement('canvas');cv.width=W*C+2*M;cv.height=H*C+2*M;
 const px=(x,y)=>[M+x*C,M+y*C];
 function paint(o){
- const g=cv.getContext('2d'),cs=getComputedStyle(document.documentElement),v=n=>cs.getPropertyValue(n).trim(),a=o.a;
- g.clearRect(0,0,cv.width,cv.height);
+ const K=o.cv||cv,g=K.getContext('2d'),cs=getComputedStyle(document.documentElement),v=n=>cs.getPropertyValue(n).trim(),a=o.a;
+ g.clearRect(0,0,K.width,K.height);
  g.fillStyle=v('--gr');
  const [x0,y0]=px(0,0);
- if(a==='v'){if(o.q)g.fillRect(px(W/2,0)[0],y0,W/2*C,H*C);else g.fillRect(x0,y0,W/2*C,H*C)}
+ if(o.noBg){}else if(a==='v'){if(o.q)g.fillRect(px(W/2,0)[0],y0,W/2*C,H*C);else g.fillRect(x0,y0,W/2*C,H*C)}
  else{if(o.q)g.fillRect(x0,px(0,H/2)[1],W*C,H/2*C);else g.fillRect(x0,y0,W*C,H/2*C)}
  g.fillStyle=v('--mu');
  for(let i=0;i<=W;i++)for(let j=0;j<=H;j++){const[p,q]=px(i,j);g.fillRect(p-1.5,q-1.5,3,3)}
@@ -114,8 +117,9 @@ cv.onpointerdown=e=>{
 function ui(o){cur=o;o.pend=pend;paint(o)}
 function stepBar(n){return '<div class="steps">'+['1 제비뽑기','2 반쪽 제출','3 친구 배정','4 대칭 완성'].map((t,i)=>`<span class="${i+1===n?'on':''}">${t}</span>`).join('')+'</div>'}
 function render(){
- const A=$('app');$('tT').textContent=(lock&&!tOK)?'🔒 선생님':'🔑 선생님';$('tS').textContent='🎒 학생';$('tS').classList.toggle('on',tab==='S');$('tT').classList.toggle('on',tab==='T'&&tOK);document.body.className=(tab==='T'&&tOK)?'teacher':'';
+ const A=$('app');$('tT').textContent=(lock&&!tOK)?'🔒 선생님':'🔑 선생님';$('tS').textContent='🎒 학생';$('tS').classList.toggle('on',tab==='S');$('tT').classList.toggle('on',tab==='T'&&tOK);$('tG').classList.toggle('on',tab==='G');document.body.className=(tab==='T'&&tOK)?'teacher':'';
  if(tab==='T'){if(!tOK)return gate(A);return teacher(A)}
+ if(tab==='G')return gallery(A);
  if(!me){
   A.innerHTML=stepBar(1)+'<div class="card"><h2>🙋 누구인가요?</h2><input id="n1" inputmode="numeric" placeholder="번호"> <input id="n2" placeholder="이름"><br><button id="go">🎉 시작하기</button></div>';
   $('go').onclick=()=>{const n=$('n1').value.trim(),m=$('n2').value.trim();if(!n||!m)return say('번호와 이름을 입력해 주세요.');me={id:'n'+n,num:n,name:m};quiz=null;mine=[];checked=null;const s=S.subs[me.id];if(s){mission=s.mission;segs=s.segs}else{mission=(S.prog[me.id]||{}).mission||null;segs=[]}pend=null;render();prog({})};
@@ -132,8 +136,8 @@ function render(){
   ui({a,q:1,edit:!checked,arr:mine,fixed:t.segs,mine,ghost:checked?ans:null});
   $('u').onclick=()=>{mine.pop();pend=null;checked=null;render()};
   $('c').onclick=()=>{mine.length=0;pend=null;checked=null;render()};
-  $('chk').onclick=()=>{pend=null;const A2=pcs(a,ans),B=pcs(a,mine);let hit=0;A2.forEach(k=>{if(B.has(k))hit++});const extra=[...B].filter(k=>!A2.has(k)).length;checked={hit,tot:A2.size,extra};render();const o=S.prog[me.id]||{};prog({quiz:{hit,tot:A2.size,extra,ok:hit===A2.size&&!extra},tries:(o.tries||0)+1})};
-  if(checked){const c=checked,all=c.hit===c.tot&&!c.extra;$('res').innerHTML=`<p class="${all?'ok':'bad'} big">${all?'완벽해요! 🎉':'다시 살펴봐요'}</p><p>맞은 선 ${c.hit} / ${c.tot}${c.extra?` · 잘못 그린 선 ${c.extra}개`:''}</p><p class="mu">${all?'':'빨간 점선이 대칭축에 대해 같은 거리에 있는 정답이에요.'}</p>`}
+  $('chk').onclick=()=>{pend=null;const A2=pcs(a,ans),B=pcs(a,mine);let hit=0;A2.forEach(k=>{if(B.has(k))hit++});const extra=[...B].filter(k=>!A2.has(k)).length;checked={hit,tot:A2.size,extra};render();const o=S.prog[me.id]||{};prog({quiz:{hit,tot:A2.size,extra,ok:hit===A2.size&&!extra},tries:(o.tries||0)+1,done:{target:as.target,owner:t.name,n:t.mission.n,a,fixed:t.segs,segs:mine.slice()}})};
+  if(checked){const c=checked,all=c.hit===c.tot&&!c.extra;$('res').innerHTML=`<p class="${all?'ok':'bad'} big">${all?'완벽해요! 🎉':'다시 살펴봐요'}</p><p>맞은 선 ${c.hit} / ${c.tot}${c.extra?` · 잘못 그린 선 ${c.extra}개`:''}</p><p class="mu">${all?'':'빨간 점선이 대칭축에 대해 같은 거리에 있는 정답이에요.'}</p><p class="mu">🖼️ 공유 탭에서 친구들이 완성한 그림을 볼 수 있어요.</p>`}
   return;
  }
  if(sub){
@@ -146,6 +150,13 @@ function render(){
  $('cw').appendChild(cv);ui({a:mission.a,edit:true,arr:segs,mine:segs});
  $('u').onclick=()=>{segs.pop();pend=null;render()};$('c').onclick=()=>{segs.length=0;pend=null;render()};
  $('sb').onclick=async()=>{if(!segs.length)return say('먼저 그림을 그려 주세요.');pend=null;const ok=await put('subs',me.id,{num:me.num,name:me.name,mission,segs});if(ok)say('제출이 완료되었습니다.')};
+}
+function gallery(A){
+ const mine=me&&S.prog[me.id]&&S.prog[me.id].done;
+ if(!tOK&&!mine){A.innerHTML='<div class="card"><h2>🖼️ 공유</h2><p>4단계 퀴즈를 완료하면 친구들이 완성한 그림을 볼 수 있어요.</p></div>';return}
+ const L=Object.values(S.prog).filter(p=>p.done).sort((x,y)=>(x.t||0)-(y.t||0));
+ A.innerHTML=`<div class="card"><h2>🖼️ 완성 그림 공유 (${L.length}개)</h2><p class="mu">파란 선은 처음 그린 친구, 초록 선은 완성한 친구가 그렸어요.</p></div><div class="gal">${L.map((p,i)=>`<div class="card"><canvas id="g${i}"></canvas><b>${p.name} - ${p.done.owner}의 그림</b><span class="mu">${p.done.n} · ${p.quiz&&p.quiz.ok?'✅ 완벽':'완성'}</span></div>`).join('')}</div>`;
+ L.forEach((p,i)=>{const c=$('g'+i);c.width=cv.width;c.height=cv.height;paint({cv:c,a:p.done.a,noBg:1,fixed:p.done.fixed,mine:p.done.segs})});
 }
 function gate(A){
  A.innerHTML='<div class="card"><h2>🔑 선생님 확인</h2><p class="mu">비밀번호를 입력해 주세요.</p><input id="pw" type="password" inputmode="numeric" placeholder="비밀번호"> <button id="pk">확인</button></div>';
