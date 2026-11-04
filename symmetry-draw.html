@@ -31,7 +31,12 @@ table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{border-bottom:1p
 <div id="app"></div>
 <p class="mu" id="mode"></p>
 </main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// ===== Supabase 설정: 이 두 줄만 바꿔 주세요 =====
+const SB_URL='https://ouwmhqivrvegrmmbzkmi.supabase.co';   // 예: https://abcdxyz.supabase.co
+const SB_KEY='sb_publishable_ppJsgx4NLDPf1mxD_C2oBg_ll7pdlbj';
+// ===============================================
 const W=12,H=10,C=36,M=24;
 const MIS=[['하트','v'],['나비','v'],['집','v'],['나무','v'],['별','v'],['로켓','h'],['물고기','h'],['배','h'],['리본','h']].map(([n,a])=>({n,a}));
 const AX={v:'세로 대칭축 (왼쪽 반쪽을 그려요)',h:'가로 대칭축 (위쪽 반쪽을 그려요)'};
@@ -44,16 +49,25 @@ const LK='symm-v2';
 try{S=JSON.parse(localStorage.getItem(LK))||S}catch(e){}
 const $=id=>document.getElementById(id);
 function say(t){let d=$('toast');if(!d){d=document.createElement('div');d.id='toast';d.style.cssText='position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:700;z-index:99;max-width:90%;text-align:center';document.body.appendChild(d)}d.textContent=t;d.style.display='block';clearTimeout(d._t);d._t=setTimeout(()=>d.style.display='none',3500)}
-async function put(col,id,d){S[col][id]=d;let ok=true;if(db){try{await db.collection(col).doc(id).set(d)}catch(e){ok=false;delete S[col][id];say('저장하지 못했어요. 다시 시도해 주세요.')}}else{try{localStorage.setItem(LK,JSON.stringify(S))}catch(e){}}render();return ok}
-async function del(col,id){delete S[col][id];if(db){try{await db.collection(col).doc(id).delete()}catch(e){}}else{try{localStorage.setItem(LK,JSON.stringify(S))}catch(e){}}}
+async function put(col,id,d){S[col][id]=d;let ok=true;if(db){try{const {error}=await db.from('symm').upsert({col,id,data:d});if(error)throw error}catch(e){ok=false;delete S[col][id];say('저장하지 못했어요. 다시 시도해 주세요.')}}else{try{localStorage.setItem(LK,JSON.stringify(S))}catch(e){}}render();return ok}
+async function del(col,id){delete S[col][id];if(db){try{await db.from('symm').delete().eq('col',col).eq('id',id)}catch(e){}}else{try{localStorage.setItem(LK,JSON.stringify(S))}catch(e){}}}
 (async()=>{
  try{
-  const t=new Promise(r=>setTimeout(()=>r(null),4000));
-  const u=await Promise.race([claude.use('user'),t]);owner=u?u.isOwner():false;
-  db=await Promise.race([claude.use('db'),t]);
+  if(window.supabase&&SB_URL.startsWith('http')){
+   const c=window.supabase.createClient(SB_URL,SB_KEY);
+   const {error}=await c.from('symm').select('col').limit(1);
+   if(error)throw error;
+   db=c;
+  }
  }catch(e){db=null}
  if(db){local=false;S={subs:{},assign:{}};
-  for(const c of ['subs','assign'])db.collection(c).onSnapshot(sn=>{S[c]={};sn.docs.forEach(d=>S[c][d.id]=d.data());render()},()=>{});}
+  let tm=null;
+  const load=async()=>{const {data,error}=await db.from('symm').select('*');if(error||!data)return;const N={subs:{},assign:{}};data.forEach(r=>{if(N[r.col])N[r.col][r.id]=r.data});S=N;
+   // 이름·비밀번호 입력 중에는 화면을 다시 그리지 않음 (입력한 글자가 지워지지 않게)
+   if((tab==='S'&&!me)||(tab==='T'&&!tOK))return;render()};
+  await load();
+  db.channel('symm-live').on('postgres_changes',{event:'*',schema:'public',table:'symm'},()=>{clearTimeout(tm);tm=setTimeout(load,300)}).subscribe();
+ }
  $('mode').textContent=local?'이 기기 안에서만 저장돼요. (한 대의 기기로 수업할 때 사용)':'모든 학생의 제출이 공유돼요.';
  render();
 })();
